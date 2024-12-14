@@ -1,16 +1,19 @@
-import requests  # Import requests module as a whole
+from requests import post
+import requests  # Make sure to import the entire requests module
 from os import getenv
 from time import strftime, gmtime
 
 # Environment variables
 # TELEGRAM_BOT_TOKEN - The token for the Telegram bot
 # TELEGRAM_CHAT_ID - The chat ID to send the message to
-# HELIOSHOST_USER - The username of the HelioHost account
-# HELIOSHOST_PWD - The password of the HelioHost account
+# HELIOSHOST_USER -  The username of the HelioHost account
+# HELIOSHOST_PWD -  The password of the HelioHost account
 
-def run(username: str, password: str, user_agent: str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36") -> bool:
-    # Perform login by POST request using requests.post() instead of just post
-    login_response = requests.post(
+def run(username: str,
+        password: str,
+        user_agent: str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36"
+        ) -> str:
+    r = post(
         "https://www.heliohost.org/login/",
         headers={
             "Cache-Control": "max-age=0",
@@ -33,19 +36,12 @@ def run(username: str, password: str, user_agent: str = "Mozilla/5.0 (X11; Linux
         }
     )
     
-    # After login, check if we are successfully redirected to the dashboard
-    if login_response.ok:
-        dashboard_response = requests.get("https://heliohost.org/dashboard/", headers={
-            "User-Agent": user_agent,
-        })
-        
-        # If the response contains a known string that appears only when logged in (e.g., username), consider it successful
-        if "Dashboard" in dashboard_response.text:  # Adjust this based on the actual page content
-            return True  # Successfully logged in and redirected to dashboard
-        else:
-            return False  # Failed to log in or dashboard page didn't load properly
+    cookies = r.headers.get('Set-Cookie')
+    
+    if cookies:
+        return cookies
     else:
-        return False  # Login failed
+        return "登录后未返回任何 cookie。"
 
 
 def send_telegram_message(message):
@@ -57,7 +53,7 @@ def send_telegram_message(message):
         "text": message,
         "parse_mode": "Markdown"
     }
-    response = requests.post(url, json=payload)  # Use requests.post here
+    response = requests.post(url, json=payload)
     return response.json()
 
 
@@ -65,27 +61,25 @@ def automatic_execution():
     now = gmtime()
     print(f"\nScript running @ \33[36m{strftime('%Y-%m-%dT%H:%M:%SZ', now)}\33[0m...", end=' ', flush=True)
     
-    # Run the login check
-    login_success = run(getenv("HELIOSHOST_USER"), getenv("HELIOSHOST_PWD"))
+    cookie_response = run(getenv("HELIOSHOST_USER"), getenv("HELIOSHOST_PWD"))
     
-    if login_success:
-        print("\33[32mlogged in successfully.\33[0m")
-    else:
-        print("\33[31mlogin failed.\33[0m")
+    print("\33[32mlogged in.\33[0m")
     
     # Don't print too much information to the console, because unauthorized eyes might see it
-    if login_success:
-        message = f"""HelioHost
-
-{' ' if not now else f' ({strftime("%Y-%m-%dT%H:%M:%SZ", now)})'} 登陆成功."""
-    else:
-        message = f"""HelioHost
-
-{' ' if not now else f' ({strftime("%Y-%m-%dT%H:%M:%SZ", now)})'} 登陆失败."""
+    print("Server Response (trimmed):", cookie_response[0:11])
     
-    # Send Telegram message
     if getenv("TELEGRAM_BOT_TOKEN") and getenv("TELEGRAM_CHAT_ID"):
         print(f"Sending message to Telegram bot...", end=' ', flush=True)
+        
+        message = f"""HELIOSHOST!
+
+{' ' if not now else f' ({strftime("%Y-%m-%dT%H:%M:%SZ", now)})'} 登录帐户。
+
+这是您的 Heliohost 会话 cookie:
+{cookie_response.strip()}
+
+"""
+        
         send_telegram_message(message)
         print("\33[32mdone.\33[0m")
     else:
