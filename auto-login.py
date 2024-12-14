@@ -1,4 +1,4 @@
-import requests
+import requests  # Import requests module as a whole
 from os import getenv
 from time import strftime, gmtime
 
@@ -8,10 +8,9 @@ from time import strftime, gmtime
 # HELIOSHOST_USER - The username of the HelioHost account
 # HELIOSHOST_PWD - The password of the HelioHost account
 
-
 def run(username: str, password: str, user_agent: str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36") -> bool:
-    # Perform login by POST request
-    login_response = post(
+    # Perform login by POST request using requests.post() instead of just post
+    login_response = requests.post(
         "https://www.heliohost.org/login/",
         headers={
             "Cache-Control": "max-age=0",
@@ -36,7 +35,7 @@ def run(username: str, password: str, user_agent: str = "Mozilla/5.0 (X11; Linux
     
     # After login, check if we are successfully redirected to the dashboard
     if login_response.ok:
-        dashboard_response = get("https://heliohost.org/dashboard/", headers={
+        dashboard_response = requests.get("https://heliohost.org/dashboard/", headers={
             "User-Agent": user_agent,
         })
         
@@ -77,8 +76,6 @@ def automatic_execution():
     # Don't print too much information to the console, because unauthorized eyes might see it
     if login_success:
         message = f"""HelioHost
-
-Thanks for using the HelioHost Auto Login Bot!
 
 {' ' if not now else f' ({strftime("%Y-%m-%dT%H:%M:%SZ", now)})'} 登陆成功."""
     else:
