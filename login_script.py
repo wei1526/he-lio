@@ -23,8 +23,8 @@ def login_heliohost(email, password):
         page.goto("https://heliohost.org/login")
 
         # 输入邮箱和密码
-        page.fill('input[placeholder="Email Address/Username"]', email)
-        page.fill('input[placeholder="Password"]', password)
+        page.fill('inputs[placeholder="Email Address/Username"]', email)
+        page.fill('inputs[placeholder="Password"]', password)
     
         # 点击登录按钮
         page.click('button:has-text("Login")')
