@@ -14,23 +14,18 @@ def send_telegram_message(message):
     response = requests.post(url, json=payload)
     return response.json()
 
+from playwright.sync_api import sync_playwright
+
 def login_heliohost(email, password):
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        context = browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
-        page = context.new_page()
-
-        # 确保页面完全加载
+        page = browser.new_page()
         page.goto("https://www.heliohost.org/login", wait_until="networkidle")
-
-        # 等待输入框可见
-        page.wait_for_selector('input[placeholder="Email Address/Username"]', timeout=60000)
-
-        # 填充登录信息
-        page.fill('input[placeholder="Email Address/Username"]', email)
-        page.fill('input[placeholder="Password"]', password)
-
-        # 点击登录按钮
+        
+        # 等待并填充登录元素
+        page.wait_for_selector('input#username', state="visible", timeout=60000)
+        page.fill('input#username', email)
+        page.fill('input[name="password"]', password)  # 修改为更具体的选择器
         page.click('button[type="submit"]')
 
         # 等待可能出现的错误消息或成功登录后的页面
