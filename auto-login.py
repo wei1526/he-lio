@@ -1,4 +1,4 @@
-from requests import post, get
+from requests import post, get, requests  # Add the import for requests
 from os import getenv
 from time import strftime, gmtime
 
@@ -41,7 +41,7 @@ def run(username: str, password: str, user_agent: str = "Mozilla/5.0 (X11; Linux
         })
         
         # If the response contains a known string that appears only when logged in (e.g., username), consider it successful
-        if "HelioHost Dashboard" in dashboard_response.text:  # Adjust this based on the actual page content
+        if "Dashboard" in dashboard_response.text:  # Adjust this based on the actual page content
             return True  # Successfully logged in and redirected to dashboard
         else:
             return False  # Failed to log in or dashboard page didn't load properly
@@ -58,7 +58,7 @@ def send_telegram_message(message):
         "text": message,
         "parse_mode": "Markdown"
     }
-    response = requests.post(url, json=payload)
+    response = requests.post(url, json=payload)  # Use requests.post here
     return response.json()
 
 
@@ -78,15 +78,13 @@ def automatic_execution():
     if login_success:
         message = f"""HelioHost
 
-{' ' if not now else f' ({strftime("%Y-%m-%dT%H:%M:%SZ", now)})'} 尝试登录, 登陆成功.
+Thanks for using the HelioHost Auto Login Bot!
 
-"""
+{' ' if not now else f' ({strftime("%Y-%m-%dT%H:%M:%SZ", now)})'} 登陆成功."""
     else:
         message = f"""HelioHost
 
-{' ' if not now else f' ({strftime("%Y-%m-%dT%H:%M:%SZ", now)})'} 尝试登录, 登陆失败.
-
-"""
+{' ' if not now else f' ({strftime("%Y-%m-%dT%H:%M:%SZ", now)})'} 登陆失败."""
     
     # Send Telegram message
     if getenv("TELEGRAM_BOT_TOKEN") and getenv("TELEGRAM_CHAT_ID"):
