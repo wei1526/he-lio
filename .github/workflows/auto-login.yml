@@ -30,8 +30,8 @@ jobs:
       run: |
         echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" >> $GITHUB_ENV
         echo "TELEGRAM_CHAT_ID=${{ secrets.TELEGRAM_CHAT_ID }}" >> $GITHUB_ENV
-        echo "USER=${{ secrets.HELIOHOST_USER }}" >> $GITHUB_ENV
-        echo "PWD=${{ secrets.HELIOHOST_PWD }}" >> $GITHUB_ENV
+        echo "HELIOHOST_USER=${{ secrets.HELIOHOST_USER }}" >> $GITHUB_ENV
+        echo "HELIOHOST_PWD=${{ secrets.HELIOHOST_PWD }}" >> $GITHUB_ENV
 
     - name: Run the Python script
       run: |
