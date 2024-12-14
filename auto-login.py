@@ -1,13 +1,12 @@
 from requests import post
 from os import getenv
-import requests
+from time import strftime, gmtime
 
 # Environment variables
 # TELEGRAM_BOT_TOKEN - The token for the Telegram bot
 # TELEGRAM_CHAT_ID - The chat ID to send the message to
 # HELIOSHOST_USER -  The username of the HelioHost account
 # HELIOSHOST_PWD -  The password of the HelioHost account
-
 
 def run(username: str,
         password: str,
@@ -35,8 +34,13 @@ def run(username: str,
             "password": password
         }
     )
+    
     cookies = r.headers.get('Set-Cookie')
-    return cookies
+    
+    if cookies:
+        return cookies
+    else:
+        return "No cookies returned from login."
 
 
 def send_telegram_message(message):
@@ -55,12 +59,17 @@ def send_telegram_message(message):
 def automatic_execution():
     now = gmtime()
     print(f"\nScript running @ \33[36m{strftime('%Y-%m-%dT%H:%M:%SZ', now)}\33[0m...", end=' ', flush=True)
-    cookie_response = run(getenv("USER"), getenv("PWD"))
+    
+    cookie_response = run(getenv("HELIOSHOST_USER"), getenv("HELIOSHOST_PWD"))
+    
     print("\33[32mlogged in.\33[0m")
+    
     # Don't print too much information to the console, because unauthorized eyes might see it
     print("Server Response (trimmed):", cookie_response[0:11])
+    
     if getenv("TELEGRAM_BOT_TOKEN") and getenv("TELEGRAM_CHAT_ID"):
         print(f"Sending message to Telegram bot...", end=' ', flush=True)
+        
         message = f"""Hello there!
 
 Thanks for using the HelioHost Auto Login Bot!
@@ -72,6 +81,7 @@ Here is your session cookie for Heliohost:
 
 Sincerely,
 HelioHost Auto Login Bot."""
+        
         send_telegram_message(message)
         print("\33[32mdone.\33[0m")
     else:
@@ -80,6 +90,7 @@ HelioHost Auto Login Bot."""
             "Not sending any messages.",
             sep='\n'
         )
+    
     print("\33[42mAutomatic script execution completed.\33[0m")
 
 
