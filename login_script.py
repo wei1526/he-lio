@@ -19,11 +19,16 @@ def login_heliohost(email, password):
         # 加载登录页面
         page.goto("https://www.heliohost.org/login", wait_until="networkidle")
 
+        # 截图调试
+        page.screenshot(path="before_login_debug.png")
+
         # 等待输入框并填写表单
-        page.wait_for_selector('input[name="email"]', timeout=60000)
-        page.fill('input[name="email"]', email)
-        page.fill('input[name="password"]', password)
-        page.fill('input[name="redirect"]', "/dashboard/")  # 填写隐藏字段
+        email_input = page.locator('input#username[placeholder="Email Address/Username"]').first
+        email_input.wait_for(timeout=60000)
+        email_input.fill(email)
+
+        password_input = page.locator('input[name="password"]').first
+        password_input.fill(password)
 
         # 提交表单
         page.evaluate("document.querySelector('form').submit()")
@@ -40,6 +45,7 @@ def login_heliohost(email, password):
                 error_text = error_message.inner_text()
                 return f"账号 {email} 登录失败: {error_text}"
             else:
+                page.screenshot(path="after_login_debug.png")  # 调试截图
                 return f"账号 {email} 登录失败: 未知错误"
         finally:
             browser.close()
