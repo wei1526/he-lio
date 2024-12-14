@@ -1,4 +1,4 @@
-from requests import post, get, requests  # Add the import for requests
+import requests
 from os import getenv
 from time import strftime, gmtime
 
