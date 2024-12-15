@@ -28,7 +28,7 @@ def run(username: str, password: str, user_agent: str = "Mozilla/5.0 (X11; Linux
             "Accept-Language": "en-US,en;q=0.9"
         },
         data={
-            "email": username,
+            "username": username,
             "password": password
         }
     )
