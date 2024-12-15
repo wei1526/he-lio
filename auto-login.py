@@ -1,53 +1,25 @@
-from requests import post
-import requests  # Make sure to import the entire requests module
+import requests
+from bs4 import BeautifulSoup
 from os import getenv
-from time import strftime, gmtime
 
-# Environment variables
-# TELEGRAM_BOT_TOKEN - The token for the Telegram bot
-# TELEGRAM_CHAT_ID - The chat ID to send the message to
-# HELIOSHOST_USER -  The username of the HelioHost account
-# HELIOSHOST_PWD -  The password of the HelioHost account
+# 登录页面和登录提交的URL
+LOGIN_URL = "https://heliohost.org/login/"
+DASHBOARD_URL = "https://heliohost.org/dashboard/"
 
-def run(username: str, password: str, user_agent: str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36") -> str:
-    r = post(
-        "https://www.heliohost.org/login/",
-        headers={
-            "Cache-Control": "max-age=0",
-            "Upgrade-Insecure-Requests": "1",
-            "Origin": "https://www.heliohost.org",
-            "Content-Type": "application/x-www-form-urlencoded",
-            "User-Agent": user_agent,
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-            "Sec-Fetch-Site": "same-origin",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-User": "?1",
-            "Sec-Fetch-Dest": "document",
-            "Referer": "https://www.heliohost.org/",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Accept-Language": "en-US,en;q=0.9"
-        },
-        data={
-            "username": username,
-            "password": password
-        }
-    )
+# 用户凭证（通过变量管理）
+USERNAME = getenv('USERNAME')  # 通过环境变量获取
+PASSWORD = getenv('PASSWORD')
 
-    # Check if the request was successful (HTTP 200)
-    if r.status_code == 200:
-        print("Login attempt successful.")
-    else:
-        print(f"Login failed with status code: {r.status_code}")
-    
-    cookies = r.headers.get('Set-Cookie')
-    if cookies:
-        return cookies
-    else:
-        return "登录后未返回任何 cookie。"
+if not USERNAME or not PASSWORD:
+    raise ValueError("⚠️ 环境变量 USERNAME 和 PASSWORD 必须设置！")
 
+# Telegram 发送消息函数
 def send_telegram_message(message):
-    bot_token = getenv('TELEGRAM_BOT_TOKEN')
-    chat_id = getenv('TELEGRAM_CHAT_ID')
+    bot_token = getenv('TELEGRAM_BOT_TOKEN')  # 通过环境变量获取 Bot Token
+    chat_id = getenv('TELEGRAM_CHAT_ID')      # 通过环境变量获取 Chat ID
+    if not bot_token or not chat_id:
+        print("⚠️ TELEGRAM_BOT_TOKEN 和 TELEGRAM_CHAT_ID 未设置，无法发送消息。")
+        return
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     payload = {
         "chat_id": chat_id,
@@ -57,38 +29,55 @@ def send_telegram_message(message):
     response = requests.post(url, json=payload)
     return response.json()
 
-def automatic_execution():
-    now = gmtime()
-    print(f"\nScript running @ \33[36m{strftime('%Y-%m-%dT%H:%M:%SZ', now)}\33[0m...", end=' ', flush=True)
+# 创建一个会话对象来维护Cookies
+session = requests.Session()
 
-    cookie_response = run(getenv("HELIOSHOST_USER"), getenv("HELIOSHOST_PWD"))
+def login():
+    payload = {
+        "email": USERNAME,  # 用户名/邮箱
+        "password": PASSWORD  # 密码
+    }
+    try:
+        # 获取登录页面并解析隐藏字段 (如有必要)
+        response = session.get(LOGIN_URL)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
 
-    print("\33[32mlogged in.\33[0m")
-    # Don't print too much information to the console, because unauthorized eyes might see it
-    print("Server Response (trimmed):", cookie_response[0:11])
+        # 提取隐藏字段(如果有，比如csrf_token)
+        hidden_inputs = soup.find_all("input", type="hidden")
+        for hidden in hidden_inputs:
+            payload[hidden['name']] = hidden['value']
 
-    if getenv("TELEGRAM_BOT_TOKEN") and getenv("TELEGRAM_CHAT_ID"):
-        print(f"Sending message to Telegram bot...", end=' ', flush=True)
+        # 提交登录表单
+        login_response = session.post(LOGIN_URL, data=payload)
+        login_response.raise_for_status()
 
-        message = f"""HELIOSHOST!
-
-{' ' if not now else f' ({strftime("%Y-%m-%dT%H:%M:%SZ", now)})'} 登录帐户。
-
-这是您的 Heliohost 会话 cookie:
-{cookie_response.strip()}
-
-"""
-
+        # 检查是否成功登录
+        if "dashboard" in login_response.url or "Welcome" in login_response.text:
+            message = "✅ **登录成功！**\n已成功登录 HelioHost 仪表板。"
+        else:
+            message = "❌ **登录失败！**\n请检查 HelioHost 用户名和密码是否正确。"
+        print(message)
+        
+        # 发送Telegram消息
         send_telegram_message(message)
-        print("\33[32mdone.\33[0m")
-    else:
-        print(
-            "No Telegram bot token or chat ID specified.",
-            "Not sending any messages.",
-            sep='\n'
-        )
 
-    print("\33[42mAutomatic script execution completed.\33[0m")
+        # 访问受保护页面 (如用户仪表板)
+        dashboard_response = session.get(DASHBOARD_URL)
+        if dashboard_response.status_code == 200:
+            dashboard_message = "✅ **成功访问仪表板！**"
+            print(dashboard_message)
+            send_telegram_message(dashboard_message)
+        else:
+            dashboard_message = "❌ **访问仪表板失败！**"
+            print(dashboard_message)
+            send_telegram_message(dashboard_message)
+    
+    except requests.exceptions.RequestException as e:
+        error_message = f"⚠️ **请求发生错误：**\n{e}"
+        print(error_message)
+        send_telegram_message(error_message)
 
-if __name__ == '__main__':
-    automatic_execution()
+if __name__ == "__main__":
+    login()
+
