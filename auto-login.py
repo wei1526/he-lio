@@ -9,10 +9,7 @@ from time import strftime, gmtime
 # HELIOSHOST_USER -  The username of the HelioHost account
 # HELIOSHOST_PWD -  The password of the HelioHost account
 
-def run(username: str,
-        password: str,
-        user_agent: str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36"
-        ) -> str:
+def run(username: str, password: str, user_agent: str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36") -> str:
     r = post(
         "https://www.heliohost.org/login/",
         headers={
@@ -35,14 +32,18 @@ def run(username: str,
             "password": password
         }
     )
+
+    # Check if the request was successful (HTTP 200)
+    if r.status_code == 200:
+        print("Login attempt successful.")
+    else:
+        print(f"Login failed with status code: {r.status_code}")
     
     cookies = r.headers.get('Set-Cookie')
-    
     if cookies:
         return cookies
     else:
         return "登录后未返回任何 cookie。"
-
 
 def send_telegram_message(message):
     bot_token = getenv('TELEGRAM_BOT_TOKEN')
@@ -56,21 +57,19 @@ def send_telegram_message(message):
     response = requests.post(url, json=payload)
     return response.json()
 
-
 def automatic_execution():
     now = gmtime()
     print(f"\nScript running @ \33[36m{strftime('%Y-%m-%dT%H:%M:%SZ', now)}\33[0m...", end=' ', flush=True)
-    
+
     cookie_response = run(getenv("HELIOSHOST_USER"), getenv("HELIOSHOST_PWD"))
-    
+
     print("\33[32mlogged in.\33[0m")
-    
     # Don't print too much information to the console, because unauthorized eyes might see it
     print("Server Response (trimmed):", cookie_response[0:11])
-    
+
     if getenv("TELEGRAM_BOT_TOKEN") and getenv("TELEGRAM_CHAT_ID"):
         print(f"Sending message to Telegram bot...", end=' ', flush=True)
-        
+
         message = f"""HELIOSHOST!
 
 {' ' if not now else f' ({strftime("%Y-%m-%dT%H:%M:%SZ", now)})'} 登录帐户。
@@ -79,7 +78,7 @@ def automatic_execution():
 {cookie_response.strip()}
 
 """
-        
+
         send_telegram_message(message)
         print("\33[32mdone.\33[0m")
     else:
@@ -88,9 +87,8 @@ def automatic_execution():
             "Not sending any messages.",
             sep='\n'
         )
-    
-    print("\33[42mAutomatic script execution completed.\33[0m")
 
+    print("\33[42mAutomatic script execution completed.\33[0m")
 
 if __name__ == '__main__':
     automatic_execution()
